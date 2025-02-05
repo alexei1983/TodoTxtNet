@@ -1,4 +1,6 @@
 ﻿using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
@@ -8,10 +10,15 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
     /// <summary>
     /// Represents a single to-do item in a todo.txt file.
     /// </summary>
-    public class TodoTxt : IFormattable, IParsable<TodoTxt>
+    public class TodoTxt : IFormattable, IParsable<TodoTxt>, INotifyPropertyChanged, INotifyCollectionChanged
     {
         /// <summary>
-        /// 
+        /// Options for processing the current <see cref="TodoTxt"/> instance.
+        /// </summary>
+        public TodoTxtOptions Options { get; set; } = TodoTxtOptions.None;
+
+        /// <summary>
+        /// Whether or not the to-do is complete.
         /// </summary>
         public bool Complete
         {
@@ -22,12 +29,15 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
             set
             {
+                var changed = !value.Equals(complete);
                 complete = value;
+                if (changed)
+                    OnPropertyChanged(nameof(Complete));
             }
         }
 
         /// <summary>
-        /// 
+        /// Priority for the to-do.
         /// </summary>
         public char? Priority
         {
@@ -41,12 +51,16 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                 if (value.HasValue && !char.IsAsciiLetterUpper(value.Value))
                     throw new ArgumentException($"Invalid priority: {value.Value}", nameof(value));
 
+                var changed = !Equals(value, priority);
                 priority = value;
+
+                if (changed)
+                    OnPropertyChanged(nameof(Priority));
             }
         }
 
         /// <summary>
-        /// 
+        /// Creation date for the to-do.
         /// </summary>
         public DateTime? Created
         {
@@ -57,12 +71,16 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
             set
             {
+                var changed = !Equals(created, value);
                 created = value;
+
+                if (changed)
+                    OnPropertyChanged(nameof(Created));
             }
         }
 
         /// <summary>
-        /// 
+        /// Completion date for the to-do.
         /// </summary>
         public DateTime? Completed
         {
@@ -73,14 +91,19 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
             set
             {
+                var changed = !Equals(completed, value);
+                completed = value;
+
+                if (changed)
+                    OnPropertyChanged(nameof(Completed));
+
                 if (value.HasValue && !Complete)
                     Complete = true;
-                completed = value;
             }
         }
 
         /// <summary>
-        /// 
+        /// To-do description or body.
         /// </summary>
         public string? Description
         {
@@ -91,33 +114,79 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
             set
             {
-                if (string.IsNullOrEmpty(value))
+                var changed = !Equals(value, description);
+
+                if (string.IsNullOrEmpty(value) && changed)
                 {
-                    extensions.Clear();
-                    projectTags.Clear();
-                    contextTags.Clear();
                     description = value;
+                    OnPropertyChanged(nameof(Description));
+
+                    var existingExtensions = extensions;
+                    extensions.Clear();
+                    OnCollectionChanged(nameof(Extensions), NotifyCollectionChangedAction.Remove, 
+                                        existingExtensions.Select(kp => kp).ToList());
+
+                    var existingProjects = projectTags;
+                    projectTags.Clear();
+                    OnCollectionChanged(nameof(Projects), NotifyCollectionChangedAction.Remove,
+                                        existingProjects);
+
+                    var existingContexts = contextTags;
+                    contextTags.Clear();
+                    OnCollectionChanged(nameof(Contexts), NotifyCollectionChangedAction.Remove,
+                                        existingContexts);
                 }
-                else
+                else if (!string.IsNullOrEmpty(value) && changed)
                 {
-                    if (!value.Equals(description))
+                    if (TryParse(value, null, out var todo))
                     {
-                        if (TryParse(value, null, out var todo))
-                        {
-                            ContextTags = todo.ContextTags;
-                            ProjectTags = todo.ProjectTags;
-                            ExtensionsInternal = todo.ExtensionsInternal;
-                            description = value;
-                        }
+                        description = value;
+                        OnPropertyChanged(nameof(Description));
+
+                        var existingContexts = Contexts;
+                        Contexts = todo.Contexts;
+                        var contextsRemoved = existingContexts.Except(Contexts);
+                        if (contextsRemoved.Any())
+                            OnCollectionChanged(nameof(Contexts), NotifyCollectionChangedAction.Remove,
+                                                [.. contextsRemoved]);
+
+                        var contextsAdded = Contexts.Except(existingContexts);
+                        if (contextsAdded.Any())
+                            OnCollectionChanged(nameof(Contexts), NotifyCollectionChangedAction.Add,
+                                                [.. contextsAdded]);
+
+                        var existingProjects = Projects;
+                        Projects = todo.Projects;
+                        var projectsRemoved = existingProjects.Except(Projects);
+                        if (projectsRemoved.Any())
+                            OnCollectionChanged(nameof(Projects), NotifyCollectionChangedAction.Remove,
+                                                [.. projectsRemoved]);
+
+                        var projectsAdded = Projects.Except(existingProjects);
+                        if (projectsAdded.Any())
+                            OnCollectionChanged(nameof(Projects), NotifyCollectionChangedAction.Add,
+                                                [.. projectsAdded]);
+
+                        var existingExtensions = ExtensionsInternal.Select(kp => kp);
+                        ExtensionsInternal = todo.ExtensionsInternal;
+                        var extRemoved = existingExtensions.Except(ExtensionsInternal);
+                        if (extRemoved.Any())
+                            OnCollectionChanged(nameof(Extensions), NotifyCollectionChangedAction.Remove,
+                                                [.. extRemoved]);
+
+                        var extAdded = ExtensionsInternal.Except(existingExtensions);
+                        if (extAdded.Any())
+                            OnCollectionChanged(nameof(Extensions), NotifyCollectionChangedAction.Add,
+                                                [.. extAdded]);
                     }
                 }
             }
         }
 
         /// <summary>
-        /// 
+        /// Project tags for the to-do.
         /// </summary>
-        public string[] ProjectTags
+        public string[] Projects
         {
             get
             {
@@ -131,9 +200,9 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Context tags for the to-do.
         /// </summary>
-        public string[] ContextTags
+        public string[] Contexts
         {
             get
             {
@@ -147,7 +216,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Extensions (key/value pairs) for the to-do.
         /// </summary>
         public ReadOnlyDictionary<string, string> Extensions
         {
@@ -176,68 +245,168 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <summary>
         /// 
         /// </summary>
-        public TodoTxt() { }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="addCompletionTime"></param>
-        /// <param name="clearPriority"></param>
-        public void MarkComplete(bool addCompletionTime, bool clearPriority)
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void HandlePropertyChange(object? sender, PropertyChangedEventArgs e)
         {
-            if (!Complete)
+            if (Options != TodoTxtOptions.None)
             {
-                if (addCompletionTime && Created.HasValue)
-                    Completed = DateTime.Now;
+                var useUtc = HasOption(TodoTxtOptions.UtcDate);
 
-                if (clearPriority)
-                    Priority = null;
+                switch (e.PropertyName)
+                {
+                    case nameof(Complete):
+                        if (Complete)
+                        {
+                            if (HasOption(TodoTxtOptions.OnCompleteSetCompletionDate))
+                            {     
+                                if (!Completed.HasValue)
+                                {
+                                    if (Created.HasValue || HasOption(TodoTxtOptions.AllowCompletionDateWithoutCreationDate))
+                                        Completed = useUtc ? DateTime.UtcNow : DateTime.Now;
+                                }
+                            }
 
-                Complete = true;
+                            if (HasOption(TodoTxtOptions.OnCompleteMovePriorityToExtension))
+                                AddKeyValue("pri", $"{Priority}");
+
+                            if (!HasOption(TodoTxtOptions.OnCompleteKeepPriority))
+                                Priority = null;
+                        }
+                        else
+                        {
+                            if (HasOption(TodoTxtOptions.OnIncompleteClearCompletionDate) && Completed.HasValue)
+                                Completed = null;
+
+                            if (HasOption(TodoTxtOptions.OnCompleteMovePriorityToExtension) && !Priority.HasValue)
+                            {
+                                if (Extensions.TryGetValue("pri", out var priority) && priority.Length == 1)
+                                {
+                                    if (char.TryParse(priority, out var _priority) && char.IsAsciiLetterUpper(_priority))
+                                        Priority = _priority;
+                                }
+                            }         
+                        }
+                        break;
+
+                    case nameof(Completed):
+                        if (Completed.HasValue)
+                        {
+                            if (!Complete && HasOption(TodoTxtOptions.OnIncompleteClearCompletionDate))
+                                Completed = null;
+
+                            if (Complete && !HasOption(TodoTxtOptions.AllowCompletionDateWithoutCreationDate) && !Created.HasValue)
+                                Completed = null;
+                        }
+                        else
+                        {
+                            if (Complete && HasOption(TodoTxtOptions.OnCompleteSetCompletionDate))
+                            {
+                                if (Created.HasValue || HasOption(TodoTxtOptions.AllowCompletionDateWithoutCreationDate))
+                                    Completed = useUtc ? DateTime.UtcNow : DateTime.Now;
+                            }
+                        }
+                        break;
+                }
             }
         }
 
         /// <summary>
         /// 
         /// </summary>
-        public void MarkComplete()
+        /// <param name="option"></param>
+        /// <returns></returns>
+        bool HasOption(TodoTxtOptions option)
         {
-            MarkComplete(true, false);
+            return (Options & option) == option;
+        }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="TodoTxt"/> class.
+        /// </summary>
+        public TodoTxt()
+        {
+            PropertyChanged += HandlePropertyChange;
+        }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="TodoTxt"/> class.
+        /// </summary>
+        /// <param name="priority"></param>
+        /// <param name="description"></param>
+        /// <param name="creationTime"></param>
+        /// <param name="completionTime"></param>
+        /// <param name="complete"></param>
+        public TodoTxt(char? priority, string description, DateTime? creationTime, DateTime? completionTime, bool complete) : this()
+        {
+            Complete = complete;
+            Completed = completionTime;
+            Priority = priority;
+            Description = description;
+            Created = creationTime;
+        }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="TodoTxt"/> class.
+        /// </summary>
+        /// <param name="priority"></param>
+        /// <param name="description"></param>
+        public TodoTxt(char priority, string description) : this(priority, description, null, null, false)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="TodoTxt"/> class.
+        /// </summary>
+        /// <param name="description"></param>
+        public TodoTxt(string description) : this(null, description, null, null, false)
+        {
         }
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="tag"></param>
+        /// <param name="project"></param>
         /// <returns></returns>
-        public bool RemoveProjectTag(string tag)
+        public bool RemoveProject(string project)
         {
-            var indexOf = projectTags.IndexOf(tag);
+            var indexOf = projectTags.IndexOf(project);
 
             if (indexOf < 0)
                 return false;
 
+            var projectToRemove = projectTags[indexOf];
+
             projectTags.RemoveAt(indexOf);
+
+            OnCollectionChanged(nameof(Projects), NotifyCollectionChangedAction.Remove, [projectToRemove]);
+
             if (!string.IsNullOrEmpty(Description))
-                Description = Description.Replace($" +{tag}", " ");
+                Description = Description.Replace($" +{project}", " ");
+
             return true;
         }
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="tag"></param>
+        /// <param name="context"></param>
         /// <returns></returns>
-        public bool RemoveContextTag(string tag)
+        public bool RemoveContext(string context)
         {
-            var indexOf = contextTags.IndexOf(tag);
+            var indexOf = contextTags.IndexOf(context);
 
             if (indexOf < 0)
                 return false;
 
+            var contextToRemove = contextTags[indexOf];
+
             contextTags.RemoveAt(indexOf);
+
+            OnCollectionChanged(nameof(Contexts), NotifyCollectionChangedAction.Remove, [contextToRemove]);
+
             if (!string.IsNullOrEmpty(Description))
-                Description = Description.Replace($" @{tag}", " ");
+                Description = Description.Replace($" @{context}", " ");
             return true;
         }
 
@@ -248,7 +417,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <param name="value"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
-        public bool AddKeyValueTag(string key, string value)
+        public bool AddKeyValue(string key, string value)
         {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentException("Invalid key.", nameof(key));
@@ -260,6 +429,8 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                 return false;
 
             extensions.Add(key, value);
+
+            OnCollectionChanged(nameof(Extensions), NotifyCollectionChangedAction.Add, [new KeyValuePair<string, string>(key, value)]);
 
             if (!string.IsNullOrEmpty(Description))
                 Description += $" {key}:{value}";
@@ -273,7 +444,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <param name="key"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
-        public bool RemoveKeyValueTag(string key)
+        public bool RemoveKeyValue(string key)
         {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentException("Invalid key.", nameof(key));
@@ -283,10 +454,15 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
             var removed = extensions.Remove(key);
 
-            if (removed && !string.IsNullOrEmpty(Description))
-                Description = Description.Replace($" {key}:{value}", " ");
+            if (removed)
+            {
+                OnCollectionChanged(nameof(Extensions), NotifyCollectionChangedAction.Remove, [new KeyValuePair<string, string>(key, value)]);
 
-            return true;
+                if (!string.IsNullOrEmpty(Description))
+                    Description = Description.Replace($" {key}:{value}", " ");
+            }
+
+            return removed;
         }
 
         /// <summary>
@@ -301,32 +477,34 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="tag"></param>
-        public void AddProjectTag(string tag)
+        /// <param name="project"></param>
+        public void AddProject(string project)
         {
-            if (string.IsNullOrEmpty(tag))
+            if (string.IsNullOrEmpty(project))
                 return;
 
-            if (!projectTags.Contains(tag))
+            if (!projectTags.Contains(project))
             {
-                projectTags = [.. projectTags, tag];
-                Description += $" +{tag}";
+                projectTags = [.. projectTags, project];
+                OnCollectionChanged(nameof(Projects), NotifyCollectionChangedAction.Add, [project]);
+                Description += $" +{project}";
             }
         }
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="tag"></param>
-        public void AddContextTag(string tag)
+        /// <param name="context"></param>
+        public void AddContext(string context)
         {
-            if (string.IsNullOrEmpty(tag))
+            if (string.IsNullOrEmpty(context))
                 return;
 
-            if (!contextTags.Contains(tag))
+            if (!contextTags.Contains(context))
             {
-                contextTags = [.. contextTags, tag];
-                Description += $" @{tag}";
+                contextTags = [.. contextTags, context];
+                OnCollectionChanged(nameof(Contexts), NotifyCollectionChangedAction.Add, [context]);
+                Description += $" @{context}";
             }
         }
 
@@ -420,6 +598,31 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         List<string> contextTags = [];
         Dictionary<string, string> extensions = [];
 
+        public event PropertyChangedEventHandler? PropertyChanged;
+        public event NotifyCollectionChangedEventHandler? CollectionChanged;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="propertyName"></param>
+        void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="propertyName"></param>
+        /// <param name="action"></param>
+        /// <param name="changedItems"></param>
+        void OnCollectionChanged<T>(string propertyName, NotifyCollectionChangedAction action, IList<T> changedItems)
+        {
+            OnPropertyChanged(propertyName);
+            CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItems));
+        }
+
         /// <summary>
         /// 
         /// </summary>
@@ -429,6 +632,9 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <exception cref="NotImplementedException"></exception>
         public static TodoTxt Parse(string s, IFormatProvider? provider)
         {
+            if (string.IsNullOrEmpty(s))
+                throw new ArgumentException("Invalid to-do.", nameof(s));
+
             var todoParser = new TodoTxtParser();
             todoParser.LoadString(s);
             return todoParser.ReadTodoFirstOrDefault() ??

@@ -126,7 +126,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
             if (!string.IsNullOrEmpty(tag))
             {
-                parseState.Todo.ContextTags = [.. parseState.Todo.ContextTags, tag];
+                parseState.Todo.Contexts = [.. parseState.Todo.Contexts, tag];
                 skip = (tmpPosition - position) > 0 ? tmpPosition - position : todoTxt.Length + 1;
                 return true;
             }
@@ -154,7 +154,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
             if (!string.IsNullOrEmpty(tag))
             {
-                parseState.Todo.ProjectTags = [.. parseState.Todo.ProjectTags, tag];
+                parseState.Todo.Projects = [.. parseState.Todo.Projects, tag];
                 skip = (tmpPosition - position) > 0 ? tmpPosition - position : todoTxt.Length + 1;
                 return true;
             }
