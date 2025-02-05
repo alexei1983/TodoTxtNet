@@ -24,8 +24,8 @@ To create a new to-do item and write it to a file:
 var newTodo = new TodoTxt();
 newTodo.Description = "Thank Mom for the meatballs @phone";
 newTodo.Priority = 'A';
-var todoList = new TodoTxtList(newTodo);
-todoList.SaveToFile(@"C:\Users\username\Desktop\newTodo.txt")
+var newTodoList = new TodoTxtList(newTodo);
+newTodoList.SaveToFile(@"C:\Users\username\Desktop\newTodo.txt")
 ```
 
 The `newTodo.txt` file now contains this line:
@@ -34,3 +34,13 @@ The `newTodo.txt` file now contains this line:
 (A) Thank Mom for the meatballs @phone
 ```
 
+To filter the `todoList` parsed above, use the various extension methods:
+
+```
+var superImportantTodos = todoList.Priorities('A', 'B')
+                                  .ForContext("Work")
+                                  .ForProject("NewClient")
+                                  .Incomplete();
+```
+
+The variable `superImportantTodos` now contains the filtered to-do list sorted by description.

@@ -307,6 +307,16 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <summary>
         /// 
         /// </summary>
+        /// <param name="filter"></param>
+        /// <returns></returns>
+        public IEnumerable<TodoTxt> Filter(Func<TodoTxt, bool> filter)
+        {
+            return this.Where(filter).OrderBy(t => t.Description);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
         public void Clear()
         {
             var tmpList = list;
