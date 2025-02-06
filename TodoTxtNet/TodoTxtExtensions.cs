@@ -49,7 +49,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
             if (!char.IsAsciiLetterUpper(priority))
                 throw new ArgumentException($"Invalid priority: {priority}", nameof(priority));
 
-            return todoTxt.Where(t => t.Priority.HasValue && t.Priority.Value >= priority)
+            return todoTxt.Where(t => t.Priority.HasValue && t.Priority.Value <= priority)
                           .OrderBy(t => t.ToString("G", null));
         }
 
@@ -65,7 +65,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
             if (!char.IsAsciiLetterUpper(priority))
                 throw new ArgumentException($"Invalid priority: {priority}", nameof(priority));
 
-            return todoTxt.Where(t => t.Priority.HasValue && t.Priority.Value <= priority)
+            return todoTxt.Where(t => t.Priority.HasValue && t.Priority.Value >= priority)
                           .OrderBy(t => t.ToString("G", null));
         }
 
