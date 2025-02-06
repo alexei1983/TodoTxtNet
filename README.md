@@ -43,4 +43,4 @@ var superImportantTodos = todoList.Priorities('A', 'B')
                                   .Incomplete();
 ```
 
-The variable `superImportantTodos` now contains the filtered to-do list sorted by description.
+The variable `superImportantTodos` now contains the filtered and sorted to-do list.
