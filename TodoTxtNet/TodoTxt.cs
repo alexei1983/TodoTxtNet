@@ -13,6 +13,11 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
     public class TodoTxt : IFormattable, IParsable<TodoTxt>, INotifyPropertyChanged, INotifyCollectionChanged
     {
         /// <summary>
+        /// Empty to-do task.
+        /// </summary>
+        public static readonly TodoTxt Empty = new(string.Empty);
+
+        /// <summary>
         /// Options for processing the current <see cref="TodoTxt"/> instance.
         /// </summary>
         public TodoTxtOptions Options { get; set; } = TodoTxtOptions.None;
@@ -332,11 +337,11 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <summary>
         /// Creates a new instance of the <see cref="TodoTxt"/> class.
         /// </summary>
-        /// <param name="priority"></param>
-        /// <param name="description"></param>
-        /// <param name="creationTime"></param>
-        /// <param name="completionTime"></param>
-        /// <param name="complete"></param>
+        /// <param name="priority">To-do priority (A-Z).</param>
+        /// <param name="description">To-do description.</param>
+        /// <param name="creationTime">To-do creation time.</param>
+        /// <param name="completionTime">To-do completion time.</param>
+        /// <param name="complete">Whether or not the to-do is complete.</param>
         public TodoTxt(char? priority, string description, DateTime? creationTime, DateTime? completionTime, bool complete) : this()
         {
             Complete = complete;
@@ -349,8 +354,8 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <summary>
         /// Creates a new instance of the <see cref="TodoTxt"/> class.
         /// </summary>
-        /// <param name="priority"></param>
-        /// <param name="description"></param>
+        /// <param name="priority">To-do priority (A-Z).</param>
+        /// <param name="description">To-do description.</param>
         public TodoTxt(char priority, string description) : this(priority, description, null, null, false)
         {
         }
@@ -358,18 +363,142 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <summary>
         /// Creates a new instance of the <see cref="TodoTxt"/> class.
         /// </summary>
-        /// <param name="description"></param>
+        /// <param name="description">To-do description.</param>
         public TodoTxt(string description) : this(null, description, null, null, false)
         {
         }
 
         /// <summary>
+        /// Determines whether or not the to-do is empty.
+        /// </summary>
+        /// <returns>True if the to-do is empty, else false.</returns>
+        public bool IsEmpty()
+        {
+            return string.IsNullOrEmpty(Description?.Trim());
+        }
+
+        /// <summary>
+        /// Calculates the duration of the to-do from creation to completion.
+        /// </summary>
+        /// <returns><see cref="TimeSpan"/></returns>
+        public TimeSpan GetDuration()
+        {
+            if (Created.HasValue && Completed.HasValue && Created.Value <= Completed.Value)
+                return Completed.Value - Created.Value;
+
+            return TimeSpan.Zero;
+        }
+
+        /// <summary>
         /// 
         /// </summary>
-        /// <param name="project"></param>
+        /// <param name="key"></param>
         /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
+        public string? GetKeyValue(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentException("Invalid key.", nameof(key));
+
+            if (!TodoTxtHelper.IsValidKeyValue(key))
+                throw new ArgumentException("Invalid key.", nameof(key));
+
+            if (Extensions.TryGetValue(key, out var strVal))
+                return strVal;
+
+            return null;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public DateTime? GetKeyValueAsDate(string key)
+        {
+            var strVal = GetKeyValue(key);
+            if (!string.IsNullOrEmpty(strVal))
+            {
+                if (DateTime.TryParseExact(strVal, TodoTxtHelper.DateFormat, CultureInfo.InvariantCulture, 
+                                           DateTimeStyles.NoCurrentDateDefault, out var dateTime))
+                    return dateTime;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public int? GetKeyValueAsInt(string key)
+        {
+            var strVal = GetKeyValue(key);
+            if (!string.IsNullOrEmpty(strVal))
+            {
+                if (int.TryParse(strVal, out var val))
+                    return val;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Determines whether or not the to-do is past due.
+        /// </summary>
+        /// <returns>True if a due date is present and is in the past, else false.</returns>
+        public bool IsPastDue()
+        {
+            var dueDate = GetKeyValueAsDate(TodoTxtHelper.DueDateKey);
+            return dueDate.HasValue && dueDate.Value <= (dueDate.Value.Kind == DateTimeKind.Utc ? DateTime.UtcNow : DateTime.Now);
+        }
+
+        /// <summary>
+        /// Increases the priority of the to-do by one level.
+        /// </summary>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void IncreasePriority()
+        {
+            if (!Priority.HasValue)
+                return;
+
+            if (Priority.Value == 'A')
+                throw new InvalidOperationException($"Cannot increase priority: value is already {Priority.Value}");
+
+            var priorityInt = (int)Priority.Value;
+            priorityInt--;
+            Priority = (char)priorityInt;
+        }
+
+        /// <summary>
+        /// Decreases the priority of the to-do by one level.
+        /// </summary>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void DecreasePriority()
+        {
+            if (!Priority.HasValue)
+                return;
+
+            if (Priority.Value == 'Z')
+                throw new InvalidOperationException($"Cannot decrease priority: value is already {Priority.Value}");
+
+            var priorityInt = (int)Priority.Value;
+            priorityInt++;
+            Priority = (char)priorityInt;
+        }
+
+        /// <summary>
+        /// Removes the specified project tag from the to-do.
+        /// </summary>
+        /// <param name="project">Project tag to remove.</param>
+        /// <returns>True on removal, else false.</returns>
         public bool RemoveProject(string project)
         {
+            if (string.IsNullOrEmpty(project))
+                throw new ArgumentException($"Invalid project: {project}", nameof(project));
+
+            if (!TodoTxtHelper.IsValidTag(project))
+                throw new ArgumentException($"Invalid project: {project}", nameof(project));
+
             var indexOf = projectTags.IndexOf(project);
 
             if (indexOf < 0)
@@ -388,12 +517,18 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Removes the specified context tag from the to-do.
         /// </summary>
-        /// <param name="context"></param>
-        /// <returns></returns>
+        /// <param name="context">Context tag to remove.</param>
+        /// <returns>True on removal, else false.</returns>
         public bool RemoveContext(string context)
         {
+            if (string.IsNullOrEmpty(context))
+                throw new ArgumentException($"Invalid context: {context}", nameof(context));
+
+            if (!TodoTxtHelper.IsValidTag(context))
+                throw new ArgumentException($"Invalid context: {context}", nameof(context));
+
             var indexOf = contextTags.IndexOf(context);
 
             if (indexOf < 0)
@@ -411,11 +546,11 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Adds the specified key/value extension to the to-do.
         /// </summary>
-        /// <param name="key"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
+        /// <param name="key">Key to add.</param>
+        /// <param name="value">Value to add.</param>
+        /// <returns>True if the key/value extension was added successfully, else false.</returns>
         /// <exception cref="ArgumentException"></exception>
         public bool AddKeyValue(string key, string value)
         {
@@ -424,6 +559,9 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
             if (string.IsNullOrEmpty(value))
                 throw new ArgumentException("Invalid value.", nameof(value));
+
+            if (!TodoTxtHelper.IsValidExtension(key, value))
+                throw new ArgumentException($"Invalid key/value pair: {key}:{value}");
 
             if (Extensions.ContainsKey(key))
                 return false;
@@ -439,15 +577,18 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Removes the extension with the specified key from the to-do.
         /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
+        /// <param name="key">Key to remove.</param>
+        /// <returns>True on removal, else false.</returns>
         /// <exception cref="ArgumentException"></exception>
         public bool RemoveKeyValue(string key)
         {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentException("Invalid key.", nameof(key));
+
+            if (!TodoTxtHelper.IsValidKeyValue(key))
+                throw new ArgumentException($"Invalid key: {key}", nameof(key));
 
             if (!Extensions.TryGetValue(key, out var value))
                 return false;
@@ -466,22 +607,25 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Sets the to-do description.
         /// </summary>
-        /// <param name="value"></param>
+        /// <param name="value">To-do description.</param>
         protected internal void SetDescription(string value)
         {
             description = value;
         }
 
         /// <summary>
-        /// 
+        /// Adds the specified project tag to the to-do.
         /// </summary>
-        /// <param name="project"></param>
+        /// <param name="project">Project tag to add.</param>
         public void AddProject(string project)
         {
             if (string.IsNullOrEmpty(project))
-                return;
+                throw new ArgumentException($"Invalid project: {project}", nameof(project));
+
+            if (!TodoTxtHelper.IsValidTag(project))
+                throw new ArgumentException($"Invalid project: {project}", nameof(project));
 
             if (!projectTags.Contains(project))
             {
@@ -492,13 +636,16 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Adds the specified context tag to the to-do.
         /// </summary>
-        /// <param name="context"></param>
+        /// <param name="context">Context tag to add.</param>
         public void AddContext(string context)
         {
             if (string.IsNullOrEmpty(context))
-                return;
+                throw new ArgumentException($"Invalid context: {context}", nameof(context));
+
+            if (!TodoTxtHelper.IsValidTag(context))
+                throw new ArgumentException($"Invalid context: {context}", nameof(context));
 
             if (!contextTags.Contains(context))
             {
@@ -509,30 +656,70 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Sets the due date for the to-do.
         /// </summary>
-        /// <returns></returns>
+        /// <param name="dueDate">Due date.</param>
+        public void SetDueDate(DateTime dueDate)
+        {
+            ClearDueDate();
+            var ext = TodoTxtHelper.GetDueDateExtension(dueDate);
+            AddKeyValue(ext.Key, ext.Value);
+        }
+
+        /// <summary>
+        /// Clears the currently set due date, if any.
+        /// </summary>
+        public void ClearDueDate()
+        {
+            if (Extensions.TryGetValue(TodoTxtHelper.DueDateKey, out var _))
+                RemoveKeyValue(TodoTxtHelper.DueDateKey);
+        }
+
+        /// <summary>
+        /// Sets the threshold date for the to-do.
+        /// </summary>
+        /// <param name="threshold">Threshold date.</param>
+        public void SetThreshold(DateTime threshold)
+        {
+            ClearThreshold();
+            var ext = TodoTxtHelper.GetThresholdExtension(threshold);
+            AddKeyValue(ext.Key, ext.Value);
+        }
+
+        /// <summary>
+        /// Clears the currently set threshold date, if any.
+        /// </summary>
+        public void ClearThreshold()
+        {
+            if (Extensions.TryGetValue(TodoTxtHelper.ThresholdKey, out var _))
+                RemoveKeyValue(TodoTxtHelper.ThresholdKey);
+        }
+
+        /// <summary>
+        /// Creates a string representation of the to-do.
+        /// </summary>
+        /// <returns><see cref="string"/></returns>
         public override string ToString()
         {
             return ToString("G", CultureInfo.CurrentCulture);
         }
 
         /// <summary>
-        /// 
+        /// Creates a string representation of the to-do.
         /// </summary>
-        /// <param name="format"></param>
-        /// <returns></returns>
+        /// <param name="format">String format.</param>
+        /// <returns><see cref="string"/></returns>
         public string ToString(string? format)
         {
             return ToString(format, CultureInfo.CurrentCulture);
         }
 
         /// <summary>
-        /// 
+        /// Creates a string representation of the to-do.
         /// </summary>
-        /// <param name="format"></param>
-        /// <param name="formatProvider"></param>
-        /// <returns></returns>
+        /// <param name="format">String format.</param>
+        /// <param name="formatProvider">Format provider.</param>
+        /// <returns><see cref="string"/></returns>
         /// <exception cref="FormatException"></exception>
         public string ToString(string? format, IFormatProvider? formatProvider)
         {
@@ -598,7 +785,15 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         List<string> contextTags = [];
         Dictionary<string, string> extensions = [];
 
+        /// <summary>
+        /// Event raised when a property on the to-do changes.
+        /// </summary>
         public event PropertyChangedEventHandler? PropertyChanged;
+
+        /// <summary>
+        /// Event raised when a context tag, project tag, or key/value extension is added 
+        /// or removed.
+        /// </summary>
         public event NotifyCollectionChangedEventHandler? CollectionChanged;
 
         /// <summary>
@@ -624,11 +819,13 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Parses the specified string as a single <see cref="TodoTxt"/> item.
         /// </summary>
-        /// <param name="s"></param>
-        /// <param name="provider"></param>
-        /// <returns></returns>
+        /// <remarks>If more than one to-do is found in the string, only the first to-do 
+        /// is returned.</remarks>
+        /// <param name="s">String to parse.</param>
+        /// <param name="provider">Format provider.</param>
+        /// <returns><see cref="TodoTxt"/></returns>
         /// <exception cref="NotImplementedException"></exception>
         public static TodoTxt Parse(string s, IFormatProvider? provider)
         {
@@ -642,21 +839,18 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Parses the specified string as a single <see cref="TodoTxt"/> item.
         /// </summary>
-        /// <param name="s"></param>
-        /// <param name="provider"></param>
-        /// <param name="result"></param>
-        /// <returns></returns>
+        /// <param name="s">String to parse.</param>
+        /// <param name="provider">Format provider.</param>
+        /// <param name="result">Resulting <see cref="TodoTxt"/> item.</param>
+        /// <returns>True on successful parse, else false.</returns>
         /// <exception cref="NotImplementedException"></exception>
         public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TodoTxt result)
         {
             try
             {
-                if (string.IsNullOrEmpty(s))
-                    throw new ArgumentException("Invalid to-do.", nameof(s));
-
-                result = Parse(s, provider);
+                result = Parse(s ?? string.Empty, provider);
                 return true;
             }
             catch

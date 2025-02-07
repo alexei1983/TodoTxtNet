@@ -9,8 +9,6 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
     /// </summary>
     internal partial class TodoTxtParser
     {
-        const string DateFormat = "yyyy-MM-dd";
-
         /// <summary>
         /// 
         /// </summary>
@@ -387,7 +385,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
                     if (char.IsDigit(todoTxt[x]))
                     {
-                        if (TryGetDate(todoTxt, x, DateFormat, out skip, out DateTime dateTime))
+                        if (TryGetDate(todoTxt, x, TodoTxtHelper.DateFormat, out skip, out DateTime dateTime))
                         {
                             x += skip;
 
@@ -397,7 +395,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                                     x++;
 
                                 // check if we have another date, which will be creation date if present
-                                if (TryGetDate(todoTxt, x, DateFormat, out skip, out DateTime dateTime2))
+                                if (TryGetDate(todoTxt, x, TodoTxtHelper.DateFormat, out skip, out DateTime dateTime2))
                                 {
                                     x += skip;
                                     parseState.Todo.Created = dateTime2;
@@ -443,7 +441,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
                     if (char.IsDigit(todoTxt[x]))
                     {
-                        if (TryGetDate(todoTxt, x, DateFormat, out skip, out DateTime dateTime))
+                        if (TryGetDate(todoTxt, x, TodoTxtHelper.DateFormat, out skip, out DateTime dateTime))
                         {
                             x += skip;
 
@@ -453,7 +451,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                                     x++;
 
                                 // check if we have another date, which will be creation date if present
-                                if (TryGetDate(todoTxt, x, DateFormat, out skip, out DateTime dateTime2))
+                                if (TryGetDate(todoTxt, x, TodoTxtHelper.DateFormat, out skip, out DateTime dateTime2))
                                 {
                                     x += skip;
                                     parseState.Todo.Created = dateTime2;
@@ -487,7 +485,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
                     if (char.IsDigit(todoTxt[x]))
                     {
-                        if (TryGetDate(todoTxt, x, DateFormat, out skip, out DateTime dateTime))
+                        if (TryGetDate(todoTxt, x, TodoTxtHelper.DateFormat, out skip, out DateTime dateTime))
                         {
                             x += skip;
 
@@ -497,7 +495,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                                     x++;
 
                                 // check if we have another date, which will be creation date if present
-                                if (TryGetDate(todoTxt, x, DateFormat, out skip, out DateTime dateTime2))
+                                if (TryGetDate(todoTxt, x, TodoTxtHelper.DateFormat, out skip, out DateTime dateTime2))
                                 {
                                     x += skip;
                                     parseState.Todo.Created = dateTime2;

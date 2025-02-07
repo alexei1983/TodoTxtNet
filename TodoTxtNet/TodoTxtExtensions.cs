@@ -2,7 +2,7 @@
 namespace org.GoodSpace.Data.Formats.TodoTxt
 {
     /// <summary>
-    /// 
+    /// Extension methods for interacting with todo.txt.
     /// </summary>
     public static class TodoTxtExtensions
     {
@@ -14,10 +14,9 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <returns></returns>
         public static IEnumerable<TodoTxt> Priority(this IEnumerable<TodoTxt> todoTxt, char priority)
         {
-            if (!char.IsAsciiLetterUpper(priority))
-                throw new ArgumentException($"Invalid priority: {priority}", nameof(priority));
+            var _priority = TodoTxtHelper.GetPriority(priority, nameof(priority));
 
-            return todoTxt.Where(t => t.Priority.HasValue && priority.Equals(t.Priority.Value))
+            return todoTxt.Where(t => _priority.HasValue && t.Priority.HasValue && _priority.Value.Equals(t.Priority.Value))
                           .OrderBy(t => t.ToString("G", null));
         }
 
@@ -29,11 +28,11 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <returns></returns>
         public static IEnumerable<TodoTxt> Priorities(this IEnumerable<TodoTxt> todoTxt, params char[] priorities)
         {
-            var invalidPriorities = priorities.Where(p => !char.IsAsciiLetterUpper(p));
-            if (invalidPriorities.Any())
-                throw new ArgumentException($"Invalid priority: {string.Join(", ", invalidPriorities)}", nameof(priorities));
+            var _priorities = priorities.Select(p => TodoTxtHelper.GetPriority(p))
+                                        .Where(p => p.HasValue)
+                                        .Cast<char>();
 
-            return todoTxt.Where(t => t.Priority.HasValue && priorities.Contains(t.Priority.Value))
+            return todoTxt.Where(t => t.Priority.HasValue && _priorities.Contains(t.Priority.Value))
                           .OrderBy(t => t.ToString("G", null));
         }
 
@@ -46,10 +45,9 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <exception cref="ArgumentException"></exception>
         public static IEnumerable<TodoTxt> PriorityAtOrAbove(this IEnumerable<TodoTxt> todoTxt, char priority)
         {
-            if (!char.IsAsciiLetterUpper(priority))
-                throw new ArgumentException($"Invalid priority: {priority}", nameof(priority));
+            var _priority = TodoTxtHelper.GetPriority(priority, nameof(priority));
 
-            return todoTxt.Where(t => t.Priority.HasValue && t.Priority.Value <= priority)
+            return todoTxt.Where(t => _priority.HasValue && t.Priority.HasValue && t.Priority.Value <= _priority.Value)
                           .OrderBy(t => t.ToString("G", null));
         }
 
@@ -62,10 +60,9 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <exception cref="ArgumentException"></exception>
         public static IEnumerable<TodoTxt> PriorityAtOrBelow(this IEnumerable<TodoTxt> todoTxt, char priority)
         {
-            if (!char.IsAsciiLetterUpper(priority))
-                throw new ArgumentException($"Invalid priority: {priority}", nameof(priority));
+            var _priority = TodoTxtHelper.GetPriority(priority, nameof(priority));
 
-            return todoTxt.Where(t => t.Priority.HasValue && t.Priority.Value >= priority)
+            return todoTxt.Where(t => _priority.HasValue && t.Priority.HasValue && t.Priority.Value >= _priority.Value)
                           .OrderBy(t => t.ToString("G", null));
         }
 
