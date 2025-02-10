@@ -407,11 +407,12 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                                     //continue;
                                 }
                             }
-
-                            parseState.Todo.Created = dateTime;
-                            parseState.AccumulatedState |= TodoParseState.CreationDate;
-                            parseState.CurrentState = TodoParseState.CreationDate;
-                            //continue;
+                            else
+                            {
+                                parseState.Todo.Created = dateTime;
+                                parseState.AccumulatedState |= TodoParseState.CreationDate;
+                                parseState.CurrentState = TodoParseState.CreationDate;
+                            }
                         }
                     }
 
@@ -463,11 +464,12 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                                     //continue;
                                 }
                             }
-
-                            parseState.Todo.Created = dateTime;
-                            parseState.AccumulatedState |= TodoParseState.CreationDate;
-                            parseState.CurrentState = TodoParseState.CreationDate;
-                            //continue;
+                            else
+                            {
+                                parseState.Todo.Created = dateTime;
+                                parseState.AccumulatedState |= TodoParseState.CreationDate;
+                                parseState.CurrentState = TodoParseState.CreationDate;
+                            }
                         }
                     }
 
@@ -503,15 +505,14 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                                     parseState.AccumulatedState |= TodoParseState.CreationDate;
                                     parseState.AccumulatedState |= TodoParseState.CompletionDate;
                                     parseState.CurrentState = TodoParseState.CreationDate;
-
-                                    //continue;
                                 }
                             }
-
-                            parseState.Todo.Created = dateTime;
-                            parseState.AccumulatedState |= TodoParseState.CreationDate;
-                            parseState.CurrentState = TodoParseState.CreationDate;
-                            //continue;
+                            else
+                            {
+                                parseState.Todo.Created = dateTime;
+                                parseState.AccumulatedState |= TodoParseState.CreationDate;
+                                parseState.CurrentState = TodoParseState.CreationDate;
+                            }
                         }
                     }
 
