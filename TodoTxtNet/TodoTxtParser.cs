@@ -1,13 +1,12 @@
 ﻿using System.Globalization;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace org.GoodSpace.Data.Formats.TodoTxt
 {
     /// <summary>
-    /// 
+    /// Todo.txt format parser.
     /// </summary>
-    internal partial class TodoTxtParser
+    internal class TodoTxtParser
     {
         /// <summary>
         /// 
@@ -41,9 +40,6 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
             CreationDate = 8,
             CompletionDate = 16,
             Description = 32,
-            ProjectTags = 64,
-            ContextTags = 128,
-            Extensions = 256,
         }
 
         public TodoTxtParser() { }
@@ -216,25 +212,12 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                 parseState.Todo.SetDescription(description);
                 parseState.AccumulatedState |= TodoParseState.Description;
                 parseState.CurrentState = TodoParseState.Description;
-                GetExtensionsFromDescription(description, ref parseState);
+                foreach (var extKvp in TodoTxtHelper.GetExtensionsFromString(description))
+                    parseState.Todo.ExtensionsInternal.Add(extKvp.Key, extKvp.Value);
+                // GetExtensionsFromDescription(description, ref parseState);
             }
             skip = (startingPosition - position) > 0 ? startingPosition - position : todoTxt.Length + 1;
             return !string.IsNullOrEmpty(description);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="description"></param>
-        /// <param name="parseState"></param>
-        static void GetExtensionsFromDescription(string description, ref ParseState parseState)
-        {
-            foreach (Match match in KeyValueRegex().Matches(description).Cast<Match>())
-            {
-                var parts = match.Value.Split(':');
-                if (parts.Length == 2)
-                    parseState.Todo.ExtensionsInternal.Add(parts[0], parts[1]);
-            }
         }
 
         /// <summary>
@@ -364,7 +347,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                 {
                     if (x == 0 && todoTxt[x] == 'x')
                     {
-                        if (todoTxt[x + 1] == ' ')
+                        if ((x + 1) >= todoTxt.Length || todoTxt[x + 1] == ' ')
                         {
                             parseState.Todo.Complete = true;
                             parseState.AccumulatedState |= TodoParseState.CompleteFlag;
@@ -383,7 +366,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                         }
                     }
 
-                    if (char.IsDigit(todoTxt[x]))
+                    if (char.IsAsciiDigit(todoTxt[x]))
                     {
                         if (TryGetDate(todoTxt, x, TodoTxtHelper.DateFormat, out skip, out DateTime dateTime))
                         {
@@ -416,7 +399,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                         }
                     }
 
-                    // get description at this point
+                    // get description
                     if (TryGetDescription(todoTxt, x, ref parseState, out skip))
                     {
                         x += skip - 1;
@@ -440,7 +423,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                     while (todoTxt[x] == ' ')
                         x++;
 
-                    if (char.IsDigit(todoTxt[x]))
+                    if (char.IsAsciiDigit(todoTxt[x]))
                     {
                         if (TryGetDate(todoTxt, x, TodoTxtHelper.DateFormat, out skip, out DateTime dateTime))
                         {
@@ -460,8 +443,6 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                                     parseState.AccumulatedState |= TodoParseState.CreationDate;
                                     parseState.AccumulatedState |= TodoParseState.CompletionDate;
                                     parseState.CurrentState = TodoParseState.CreationDate;
-
-                                    //continue;
                                 }
                             }
                             else
@@ -473,7 +454,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                         }
                     }
 
-                    // get description at this point
+                    // get description
                     if (TryGetDescription(todoTxt, x, ref parseState, out skip))
                     {
                         x += skip - 1;
@@ -485,7 +466,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                     while (todoTxt[x] == ' ')
                         x++;
 
-                    if (char.IsDigit(todoTxt[x]))
+                    if (char.IsAsciiDigit(todoTxt[x]))
                     {
                         if (TryGetDate(todoTxt, x, TodoTxtHelper.DateFormat, out skip, out DateTime dateTime))
                         {
@@ -516,43 +497,27 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                         }
                     }
 
-                    // get description at this point
+                    // get description
                     if (TryGetDescription(todoTxt, x, ref parseState, out skip))
                     {
                         x += skip - 1;
                         continue;
                     }
                 } // end priority
-                else if (parseState.CurrentState == TodoParseState.CreationDate)
+                else
                 {
-                    // get description at this point
+                    // get description
                     if (TryGetDescription(todoTxt, x, ref parseState, out skip))
                     {
                         x += skip - 1;
                         continue;
                     }
-                } // end creation date 
-                else if (parseState.CurrentState == TodoParseState.Description || parseState.CurrentState == TodoParseState.ProjectTags ||
-                    parseState.CurrentState == TodoParseState.ContextTags || parseState.CurrentState == TodoParseState.Extensions)
-                {
-                    if (TryGetDescription(todoTxt, x, ref parseState, out skip))
-                    {
-                        x += skip - 1;
-                        continue;
-                    }
-                }
-
+                } // end parsing
+                
                 if (x > todoTxt.Length)
                     break;
             }
             return parseState.Todo;
         }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns></returns>
-        [GeneratedRegex(@"\b[^\s]{1,}:[^\s]{1,}\b")]
-        private static partial Regex KeyValueRegex();
     }
 }

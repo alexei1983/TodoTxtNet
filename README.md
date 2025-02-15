@@ -6,7 +6,9 @@ A library for reading and writing todo.txt files in .NET
 The todo.txt format is an informally defined standard for representing tasks and other to-do items in a simple 
 plaintext file.
 
-Having a library to read and write todo.txt files may seem contradictory but could be useful in several circumstances.
+The ubiquity of plaintext means that todo.txt files are inherently cross-platform and can be synced across multiple devices.
+
+This library provides tools to read and write todo.txt files in .NET 8.
 
 Check out the [todo.txt page on Github](https://github.com/todotxt/todo.txt)
 

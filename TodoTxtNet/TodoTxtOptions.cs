@@ -39,6 +39,6 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <summary>
         /// Remove a completion date (if one is set) when the to-do is marked incomplete.
         /// </summary>
-        OnIncompleteClearCompletionDate
+        OnIncompleteClearCompletionDate = 64
     }
 }
