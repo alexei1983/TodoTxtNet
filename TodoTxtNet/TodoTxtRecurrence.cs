@@ -72,6 +72,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         {
             var sign = Math.Sign(days);
             var unsignedDays = Math.Abs(days);
+            
             val = val.Date;
 
             if (days == 0)
@@ -110,11 +111,11 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                 return default;
 
             var _source = source.Clone() is TodoTxt todo ? todo : throw new ArgumentException("Invalid source to-do.", nameof(source));
-            _source.AddKeyValue(TodoTxtHelper.TempIdKey, Guid.NewGuid().ToString().Replace("-", string.Empty));
+            _source.AddExtension(TodoTxtHelper.TempIdKey, Guid.NewGuid().ToString().Replace("-", string.Empty));
 
             if (Strict)
             {
-                var dueDate = _source.GetKeyValueAsDate(TodoTxtHelper.DueDateKey) ?? DateTime.Now.Date;
+                var dueDate = _source.GetExtensionAsDate(TodoTxtHelper.DueDateKey) ?? DateTime.Now.Date;
 
                 switch (Type)
                 {
@@ -178,7 +179,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
             }
 
             _source.Complete = false;
-            _source.RemoveKeyValue(TodoTxtHelper.TempIdKey);
+            _source.RemoveExtension(TodoTxtHelper.TempIdKey);
             return _source;
         }
 

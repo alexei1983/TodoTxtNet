@@ -8,7 +8,7 @@ using System.Text;
 namespace org.GoodSpace.Data.Formats.TodoTxt
 {
     /// <summary>
-    /// Represents a single to-do item in a todo.txt file.
+    /// Represents a single to-do item in the todo.txt format.
     /// </summary>
     public class TodoTxt : IFormattable, IParsable<TodoTxt>, INotifyPropertyChanged, INotifyCollectionChanged, ICloneable
     {
@@ -34,10 +34,11 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
             set
             {
-                var changed = !value.Equals(complete);
-                complete = value;
-                if (changed)
+                if (!value.Equals(complete))
+                {
+                    complete = value;
                     OnPropertyChanged(nameof(Complete));
+                }
             }
         }
 
@@ -56,11 +57,11 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                 if (value.HasValue && !char.IsAsciiLetterUpper(value.Value))
                     throw new ArgumentException($"Invalid priority: {value.Value}", nameof(value));
 
-                var changed = !Equals(value, priority);
-                priority = value;
-
-                if (changed)
+                if (!Equals(value, priority))
+                {
+                    priority = value;
                     OnPropertyChanged(nameof(Priority));
+                }
             }
         }
 
@@ -76,11 +77,11 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
             set
             {
-                var changed = !Equals(created, value);
-                created = value;
-
-                if (changed)
+                if (!Equals(created, value))
+                {
+                    created = value;
                     OnPropertyChanged(nameof(Created));
+                }
             }
         }
 
@@ -96,14 +97,14 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
             set
             {
-                var changed = !Equals(completed, value);
-                completed = value;
-
-                if (changed)
+                if (!Equals(completed, value))
+                {
+                    completed = value;
                     OnPropertyChanged(nameof(Completed));
 
-                if (value.HasValue && !Complete)
-                    Complete = true;
+                    if (value.HasValue && !Complete)
+                        Complete = true;
+                }
             }
         }
 
@@ -273,7 +274,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
                             }
 
                             if (HasOption(TodoTxtOptions.OnCompleteMovePriorityToExtension))
-                                AddKeyValue("pri", $"{Priority}");
+                                AddExtension("pri", $"{Priority}");
 
                             if (!HasOption(TodoTxtOptions.OnCompleteKeepPriority))
                                 Priority = null;
@@ -390,9 +391,10 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Determines whether or not the to-do task can be started relative to the current date.
         /// </summary>
-        /// <returns></returns>
+        /// <remarks>The threshold date specifies the minimum date on which the to-do can be started.</remarks>
+        /// <returns>True if the to-do can be started, else false.</returns>
         public bool CanStart()
         {
             var threshold = GetThreshold();
@@ -415,18 +417,18 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// </summary>
         /// <param name="dateTime"></param>
         /// <returns></returns>
-        DateTime ToUtc(DateTime dateTime)
+        static DateTime ToUtc(DateTime dateTime)
         {
             return dateTime.Kind != DateTimeKind.Utc ? dateTime.ToUniversalTime() : dateTime;
         }
 
         /// <summary>
-        /// 
+        /// Retrieves the <see cref="string"/> value of the specified extension.
         /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
+        /// <param name="key">Key of the extension to retrieve.</param>
+        /// <returns><see cref="string"/> value of the extension if it exists, else null.</returns>
         /// <exception cref="ArgumentException"></exception>
-        public string? GetKeyValue(string key)
+        public string? GetExtension(string key)
         {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentException("Invalid key.", nameof(key));
@@ -441,13 +443,13 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Retrieves the value of the specified extension as a <see cref="DateTime"/>.
         /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        public DateTime? GetKeyValueAsDate(string key)
+        /// <param name="key">Key of the extension to retrieve.</param>
+        /// <returns><see cref="DateTime"/> value of the extension if it exists, else null.</returns>
+        public DateTime? GetExtensionAsDate(string key)
         {
-            var strVal = GetKeyValue(key);
+            var strVal = GetExtension(key);
             if (!string.IsNullOrEmpty(strVal))
             {
                 if (DateTime.TryParseExact(strVal, TodoTxtHelper.DateFormat, CultureInfo.InvariantCulture, 
@@ -458,13 +460,13 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Retrieves the value of the specified extension as an <see cref="int"/>.
         /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        public int? GetKeyValueAsInt(string key)
+        /// <param name="key">Key of the extension to retrieve.</param>
+        /// <returns><see cref="int"/> value of the extension if it exists, else null.</returns>
+        public int? GetExtensionAsInt(string key)
         {
-            var strVal = GetKeyValue(key);
+            var strVal = GetExtension(key);
             if (!string.IsNullOrEmpty(strVal))
             {
                 if (int.TryParse(strVal, out var val))
@@ -479,7 +481,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <returns>True if a due date is present and is in the past, else false.</returns>
         public bool IsPastDue()
         {
-            var dueDate = GetKeyValueAsDate(TodoTxtHelper.DueDateKey);
+            var dueDate = GetExtensionAsDate(TodoTxtHelper.DueDateKey);
             return dueDate.HasValue && dueDate.Value <= GetNow();
         }
 
@@ -490,7 +492,10 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         public void IncreasePriority()
         {
             if (!Priority.HasValue)
+            {
+                Priority = 'A';
                 return;
+            }
 
             if (Priority.Value == 'A')
                 throw new InvalidOperationException($"Cannot increase priority: value is already {Priority.Value}");
@@ -507,7 +512,10 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         public void DecreasePriority()
         {
             if (!Priority.HasValue)
+            {
+                Priority = 'Z';
                 return;
+            }
 
             if (Priority.Value == 'Z')
                 throw new InvalidOperationException($"Cannot decrease priority: value is already {Priority.Value}");
@@ -549,9 +557,9 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Calculates the hash code for the to-do item.
         /// </summary>
-        /// <returns></returns>
+        /// <returns><see cref="int"/></returns>
         public override int GetHashCode()
         {
             unchecked
@@ -572,10 +580,10 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Determines whether or not the specified object is equal to the current to-do item.
         /// </summary>
-        /// <param name="obj"></param>
-        /// <returns></returns>
+        /// <param name="obj">Object to compare to the current instance.</param>
+        /// <returns>True on equality, else false.</returns>
         public override bool Equals(object? obj)
         {
             if (obj is null)
@@ -624,20 +632,20 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <summary>
         /// Adds the specified key/value extension to the to-do.
         /// </summary>
-        /// <param name="key">Key to add.</param>
-        /// <param name="value">Value to add.</param>
+        /// <param name="key">Key of the extension to add.</param>
+        /// <param name="value">Value of the extension to add.</param>
         /// <returns>True if the key/value extension was added successfully, else false.</returns>
         /// <exception cref="ArgumentException"></exception>
-        public bool AddKeyValue(string key, string value)
+        public bool AddExtension(string key, string value)
         {
             if (string.IsNullOrEmpty(key))
-                throw new ArgumentException("Invalid key.", nameof(key));
+                throw new ArgumentException("Invalid extension key.", nameof(key));
 
             if (string.IsNullOrEmpty(value))
-                throw new ArgumentException("Invalid value.", nameof(value));
+                throw new ArgumentException("Invalid extension value.", nameof(value));
 
             if (!TodoTxtHelper.IsValidExtension(key, value))
-                throw new ArgumentException($"Invalid key/value pair: {key}:{value}");
+                throw new ArgumentException($"Invalid key/value extension pair: {key}:{value}");
 
             if (Extensions.ContainsKey(key))
                 return false;
@@ -657,10 +665,10 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <summary>
         /// Removes the extension with the specified key from the to-do.
         /// </summary>
-        /// <param name="key">Key to remove.</param>
-        /// <returns>True on removal, else false.</returns>
+        /// <param name="key">Key of the extension to remove.</param>
+        /// <returns>True on successful removal, else false.</returns>
         /// <exception cref="ArgumentException"></exception>
-        public bool RemoveKeyValue(string key)
+        public bool RemoveExtension(string key)
         {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentException("Invalid key.", nameof(key));
@@ -748,16 +756,16 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         {
             ClearDueDate();
             var ext = TodoTxtHelper.GetDueDateExtension(dueDate);
-            AddKeyValue(ext.Key, ext.Value);
+            AddExtension(ext.Key, ext.Value);
         }
 
         /// <summary>
-        /// Clears the currently set due date, if any.
+        /// Clears the due date for the to-do.
         /// </summary>
         public void ClearDueDate()
         {
             if (Extensions.TryGetValue(TodoTxtHelper.DueDateKey, out var _))
-                RemoveKeyValue(TodoTxtHelper.DueDateKey);
+                RemoveExtension(TodoTxtHelper.DueDateKey);
         }
 
         /// <summary>
@@ -768,16 +776,16 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         {
             ClearThreshold();
             var ext = TodoTxtHelper.GetThresholdExtension(threshold);
-            AddKeyValue(ext.Key, ext.Value);
+            AddExtension(ext.Key, ext.Value);
         }
 
         /// <summary>
-        /// Clears the currently set threshold date, if any.
+        /// Clears the threshold date for the to-do.
         /// </summary>
         public void ClearThreshold()
         {
             if (Extensions.TryGetValue(TodoTxtHelper.ThresholdKey, out var _))
-                RemoveKeyValue(TodoTxtHelper.ThresholdKey);
+                RemoveExtension(TodoTxtHelper.ThresholdKey);
         }
 
         /// <summary>
@@ -786,7 +794,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <returns><see cref="DateTime?"/></returns>
         public DateTime? GetDueDate()
         {
-            return GetKeyValueAsDate(TodoTxtHelper.DueDateKey);
+            return GetExtensionAsDate(TodoTxtHelper.DueDateKey);
         }
 
         /// <summary>
@@ -795,20 +803,20 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <returns><see cref="DateTime?"/></returns>
         public DateTime? GetThreshold()
         {
-            return GetKeyValueAsDate(TodoTxtHelper.ThresholdKey);
+            return GetExtensionAsDate(TodoTxtHelper.ThresholdKey);
         }
 
         /// <summary>
-        /// Determines whether or not the current <see cref="TodoTxt"/> instance is a recurring to-do.
+        /// Determines whether or not the current to-do item is a recurring to-do.
         /// </summary>
         /// <returns>True if the current to-do is recurring, else false.</returns>
         public bool IsRecurrent()
         {
-            return TodoTxtRecurrence.TryParse(GetKeyValue(TodoTxtHelper.RecurringKey), null, out _);
+            return TodoTxtRecurrence.TryParse(GetExtension(TodoTxtHelper.RecurringKey), null, out _);
         }
 
         /// <summary>
-        /// Retrieves the next recurrence of the current <see cref="TodoTxt"/> instance, if it is a recurring to-do.
+        /// Retrieves the next recurrence of the current to-do item, if it is a recurring to-do.
         /// </summary>
         /// <returns>New <see cref="TodoTxt"/> representing the next recurrence, or null if the to-do is not recurrent.</returns>
         public TodoTxt? NextRecurrence()
@@ -825,7 +833,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <returns><see cref="TodoTxtRecurrence"/> or null.</returns>
         public TodoTxtRecurrence? GetRecurrence()
         {
-            var recStr = GetKeyValue(TodoTxtHelper.RecurringKey);
+            var recStr = GetExtension(TodoTxtHelper.RecurringKey);
             if (string.IsNullOrEmpty(recStr))
                 return default;
 
@@ -833,16 +841,16 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// Clears the currently set recurrence definition, if any.
+        /// Clears the recurrence definition for the to-do.
         /// </summary>
         public void ClearRecurrence()
         {
             if (Extensions.TryGetValue(TodoTxtHelper.RecurringKey, out var _))
-                RemoveKeyValue(TodoTxtHelper.RecurringKey);
+                RemoveExtension(TodoTxtHelper.RecurringKey);
         }
 
         /// <summary>
-        /// Sets the recurrence definition for the current to-do.
+        /// Sets the recurrence definition for the to-do.
         /// </summary>
         /// <param name="recurrence">Recurrence definition.</param>
         /// <exception cref="ArgumentException"></exception>
@@ -853,11 +861,11 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
             ClearRecurrence();
             var ext = TodoTxtHelper.GetRecurringExtension(recurrence.Type, recurrence.Value, recurrence.Strict);
-            AddKeyValue(ext.Key, ext.Value);
+            AddExtension(ext.Key, ext.Value);
         }
 
         /// <summary>
-        /// Sets the recurrence definition for the current to-do.
+        /// Sets the recurrence definition for the to-do.
         /// </summary>
         /// <param name="recurrence">Recurrence definition.</param>
         /// <exception cref="ArgumentException"></exception>
@@ -873,7 +881,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// Sets the recurrence definition for the current to-do.
+        /// Sets the recurrence definition for the to-do.
         /// </summary>
         /// <param name="type">Recurrence type.</param>
         /// <param name="value">Recurrence value interval.</param>
@@ -888,25 +896,25 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// Clears the currently set unique ID, if any.
+        /// Clears the unique ID for the to-do.
         /// </summary>
         public void ClearUuid()
         {
             if (Extensions.TryGetValue(TodoTxtHelper.UuidKey, out var _))
-                RemoveKeyValue(TodoTxtHelper.UuidKey);
+                RemoveExtension(TodoTxtHelper.UuidKey);
         }
 
         /// <summary>
-        /// Retrieves the unique ID for the current to-do, if one is present.
+        /// Retrieves the unique ID for the to-do, if one is present.
         /// </summary>
         /// <returns><see cref="string"/></returns>
         public string? GetUuid()
         {
-            return GetKeyValue(TodoTxtHelper.UuidKey);
+            return GetExtension(TodoTxtHelper.UuidKey);
         }
 
         /// <summary>
-        /// Sets the unique ID for the current to-do.
+        /// Sets the unique ID for the to-do.
         /// </summary>
         /// <param name="uuid">Unique ID.</param>
         /// <exception cref="ArgumentException"></exception>
@@ -917,11 +925,11 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
 
             ClearUuid();
             var ext = TodoTxtHelper.GetUuidExtension(uuid);
-            AddKeyValue(ext.Key, ext.Value);
+            AddExtension(ext.Key, ext.Value);
         }
 
         /// <summary>
-        /// Generates and sets a new unique ID for the current to-do.
+        /// Generates and sets a new unique ID for the to-do.
         /// </summary>
         public void SetNewUuid()
         {
@@ -930,7 +938,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// Creates a string representation of the current to-do.
+        /// Returns a string representation of the current to-do.
         /// </summary>
         /// <returns><see cref="string"/></returns>
         public override string ToString()
@@ -939,7 +947,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// Creates a string representation of the current to-do.
+        /// Returns a string representation of the current to-do.
         /// </summary>
         /// <param name="format">String format.</param>
         /// <returns><see cref="string"/></returns>
@@ -949,7 +957,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// Creates a string representation of the current to-do.
+        /// Returns a string representation of the current to-do.
         /// </summary>
         /// <param name="format">String format.</param>
         /// <param name="formatProvider">Format provider.</param>
@@ -1025,13 +1033,13 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         public event PropertyChangedEventHandler? PropertyChanged;
 
         /// <summary>
-        /// Event raised when a context tag, project tag, or key/value extension is added 
+        /// Event raised when a context tag, project tag, or key/value extension is added or removed on the to-do.
         /// or removed.
         /// </summary>
         public event NotifyCollectionChangedEventHandler? CollectionChanged;
 
         /// <summary>
-        /// 
+        /// Raises the <see cref="PropertyChanged"/> event.
         /// </summary>
         /// <param name="propertyName"></param>
         void OnPropertyChanged(string propertyName)
@@ -1040,7 +1048,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// 
+        /// Raises the <see cref="CollectionChanged"/> event.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="propertyName"></param>
@@ -1075,6 +1083,8 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         /// <summary>
         /// Parses the specified string as a single <see cref="TodoTxt"/> item.
         /// </summary>
+        /// <remarks>If more than one to-do is found in the string, only the first to-do 
+        /// is returned.</remarks>
         /// <param name="s">String to parse.</param>
         /// <param name="provider">Format provider.</param>
         /// <param name="result">Resulting <see cref="TodoTxt"/> item.</param>
@@ -1094,7 +1104,7 @@ namespace org.GoodSpace.Data.Formats.TodoTxt
         }
 
         /// <summary>
-        /// Clones the current to-do.
+        /// Clones the to-do.
         /// </summary>
         /// <returns><see cref="TodoTxt"/> instance as an object.</returns>
         public object Clone()

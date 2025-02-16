@@ -8,7 +8,7 @@
     <SignAssembly>True</SignAssembly>
     <AssemblyOriginatorKeyFile>C:\Users\S017138\source\repos\PenOidProj\PenOid\alexj.snk</AssemblyOriginatorKeyFile>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-	 <Version>1.0.7</Version>
+	 <Version>1.0.8</Version>
 	 <Title>TodoTxtNet</Title>
 	 <Description>A library for reading and writing todo.txt files.</Description>
 	 <PackageTags>todo.txt; todotxt; todo; to-do; todotxtnet</PackageTags>
